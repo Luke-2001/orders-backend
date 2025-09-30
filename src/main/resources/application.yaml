@@ -1,0 +1,9 @@
+spring:
+  rabbitmq:
+    host: jaragua-01.lmq.cloudamqp.com
+    port: 5671
+    username: bjnuffmq
+    password: gj-YQIiEXyfxQxjsZtiYDKeXIT8ppUq7
+    virtual-host: bjnuffmq
+    ssl:
+      enabled: true
