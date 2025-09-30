@@ -10,6 +10,9 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 @Configuration
 public class RabbitConfig {
 
@@ -24,7 +27,9 @@ public class RabbitConfig {
     @Bean
     public Jackson2JsonMessageConverter converter() {
 
-        return new Jackson2JsonMessageConverter();
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        return new Jackson2JsonMessageConverter(objectMapper);
     }
 
     @Bean
@@ -62,4 +67,3 @@ public class RabbitConfig {
         return new Queue(FALHA, true);
     }
 }
-
