@@ -10,65 +10,65 @@ import org.springframework.stereotype.Component;
 import com.ms.pedidos.domain.PedidoDto;
 import com.ms.pedidos.domain.StatusPedidoDto;
 import com.ms.pedidos.domain.StatusPedidoEnum;
-import com.ms.pedidos.service.PedidoPublisher;
+import com.ms.pedidos.service.PedidoMessagingService;
 import com.ms.pedidos.service.StatusService;
 import com.rabbitmq.client.Channel;
 
 @Component
 public class PedidoListener {
 
-    private final PedidoPublisher publisher;
+    private final PedidoMessagingService pedidoMessagingService;
 
     private final StatusService statusService;
 
     private final Random random = new Random();
 
-    public PedidoListener(PedidoPublisher publisher, StatusService statusService) {
+    public PedidoListener(PedidoMessagingService pedidoMessagingService, StatusService statusService) {
 
-        this.publisher = publisher;
+        this.pedidoMessagingService = pedidoMessagingService;
         this.statusService = statusService;
     }
 
     @RabbitListener(queues = "${rabbit.queue.entrada:pedidos.entrada.lucas}")
-    public void receive(PedidoDto pedido, Message message, Channel channel) throws Exception {
+    public void receive(PedidoDto pedidoDto, Message message, Channel channel) throws Exception {
 
-        statusService.setStatus(pedido.getId(), "PROCESSANDO");
+        statusService.setStatus(pedidoDto.getId(), "PROCESSANDO");
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
 
         try {
 
-            System.out.println("Iniciando processamento pedido: " + pedido.getId());
+            System.out.println("Iniciando processamento pedido: " + pedidoDto.getId());
             Thread.sleep(1000 + random.nextInt(2000));
 
             double n = random.nextDouble();
 
             if (n < 0.2) {
-                throw new RuntimeException("ExcecaoDeProcessamento simulada");
+                throw new RuntimeException("Falha simulada no processamento do pedido");
             }
 
-            StatusPedidoDto status = new StatusPedidoDto();
-            status.setIdPedido(pedido.getId());
-            status.setStatus(StatusPedidoEnum.SUCESSO);
-            status.setDataProcessamento(LocalDateTime.now());
+            StatusPedidoDto statusPedidoDto = new StatusPedidoDto();
+            statusPedidoDto.setIdPedido(pedidoDto.getId());
+            statusPedidoDto.setStatus(StatusPedidoEnum.SUCESSO);
+            statusPedidoDto.setDataProcessamento(LocalDateTime.now());
 
-            publisher.publicarStatusSucesso(status);
-            statusService.setStatus(pedido.getId(), "SUCESSO");
+            pedidoMessagingService.publicarStatusSucesso(statusPedidoDto);
+            statusService.setStatus(pedidoDto.getId(), "SUCESSO");
 
             channel.basicAck(deliveryTag, false);
-            System.out.println("Processamento SUCESSO pedido: " + pedido.getId());
+            System.out.println("Processamento SUCESSO pedido: " + pedidoDto.getId());
 
         } catch (Exception ex) {
 
-            System.err.println("Processamento FALHOU pedido: " + pedido.getId() + " -> " + ex.getMessage());
+            System.err.println("Processamento FALHOU pedido: " + pedidoDto.getId() + " -> " + ex.getMessage());
 
-            StatusPedidoDto status = new StatusPedidoDto();
-            status.setIdPedido(pedido.getId());
-            status.setStatus(StatusPedidoEnum.FALHA);
-            status.setMensagemErro(ex.getMessage());
-            status.setDataProcessamento(LocalDateTime.now());
+            StatusPedidoDto statusPedidoDto = new StatusPedidoDto();
+            statusPedidoDto.setIdPedido(pedidoDto.getId());
+            statusPedidoDto.setStatus(StatusPedidoEnum.FALHA);
+            statusPedidoDto.setMensagemErro(ex.getMessage());
+            statusPedidoDto.setDataProcessamento(LocalDateTime.now());
 
-            publisher.publicarStatusFalha(status);
-            statusService.setStatus(pedido.getId(), "FALHA");
+            pedidoMessagingService.publicarStatusFalha(statusPedidoDto);
+            statusService.setStatus(pedidoDto.getId(), "FALHA");
 
             channel.basicReject(deliveryTag, false);
         }

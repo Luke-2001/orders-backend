@@ -10,22 +10,22 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import com.ms.pedidos.domain.PedidoDto;
 
-class PedidoPublisherTest {
+class PedidoMessagingServiceTest {
 
     @Test
     public void publicarPedido_deve_chamar_rabbitTemplate() {
 
         RabbitTemplate rabbitTemplate = Mockito.mock(RabbitTemplate.class);
         StatusService statusService = new StatusService();
-        PedidoPublisher publisher = new PedidoPublisher(rabbitTemplate, statusService);
+        PedidoMessagingService pedidoMessagingService = new PedidoMessagingService(rabbitTemplate, statusService);
 
-        PedidoDto pedido = new PedidoDto();
-        pedido.setId(UUID.randomUUID());
-        pedido.setProduto("Caneta");
-        pedido.setQuantidade(10);
+        PedidoDto pedidoDto = new PedidoDto();
+        pedidoDto.setId(UUID.randomUUID());
+        pedidoDto.setProduto("Caneta");
+        pedidoDto.setQuantidade(10);
 
-        publisher.publicarPedido(pedido);
+        pedidoMessagingService.publicarPedido(pedidoDto);
 
-        verify(rabbitTemplate).convertAndSend("pedidos.entrada.lucas", pedido);
+        verify(rabbitTemplate).convertAndSend("pedidos.entrada.lucas", pedidoDto);
     }
 }

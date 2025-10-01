@@ -13,43 +13,47 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ms.pedidos.domain.PedidoDto;
-import com.ms.pedidos.service.PedidoPublisher;
+import com.ms.pedidos.service.PedidoMessagingService;
 import com.ms.pedidos.service.StatusService;
 
 @RestController
 @RequestMapping("/api/pedidos")
 public class PedidoController {
 
-    private final PedidoPublisher publisher;
+    private final PedidoMessagingService pedidoMessagingService;
 
     private final StatusService statusService;
 
-    public PedidoController(PedidoPublisher publisher, StatusService statusService) {
+    public PedidoController(PedidoMessagingService pedidoMessagingService, StatusService statusService) {
 
-        this.publisher = publisher;
+        this.pedidoMessagingService = pedidoMessagingService;
         this.statusService = statusService;
     }
 
     @PostMapping
-    public ResponseEntity<?> criarPedido(@RequestBody PedidoDto pedido) {
+    public ResponseEntity<?> criarPedido(@RequestBody PedidoDto pedidoDto) {
 
-        if (pedido.getProduto() == null || pedido.getProduto().trim().isEmpty()) {
+        if (pedidoDto.getProduto() == null || pedidoDto.getProduto().trim().isEmpty()) {
             return ResponseEntity.badRequest().body("produto vazio");
         }
-        if (pedido.getQuantidade() <= 0) {
+
+        if (pedidoDto.getQuantidade() <= 0) {
             return ResponseEntity.badRequest().body("quantidade deve ser maior que zero");
         }
-        if (pedido.getId() == null) {
-            pedido.setId(UUID.randomUUID());
-        }
-        if (pedido.getDataCriacao() == null) {
-            pedido.setDataCriacao(LocalDateTime.now());
+
+        if (pedidoDto.getId() == null) {
+            pedidoDto.setId(UUID.randomUUID());
         }
 
-        statusService.setStatus(pedido.getId(), "ENVIADO");
-        publisher.publicarPedido(pedido);
-        return ResponseEntity.accepted().location(URI.create("/api/pedidos/status/" + pedido.getId()))
-                .body(pedido.getId());
+        if (pedidoDto.getDataCriacao() == null) {
+            pedidoDto.setDataCriacao(LocalDateTime.now());
+        }
+
+        statusService.setStatus(pedidoDto.getId(), "ENVIADO");
+        pedidoMessagingService.publicarPedido(pedidoDto);
+
+        return ResponseEntity.accepted().location(URI.create("/api/pedidos/status/" + pedidoDto.getId()))
+                .body(pedidoDto.getId());
     }
 
     @GetMapping("/status/{id}")
